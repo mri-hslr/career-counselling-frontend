@@ -1,19 +1,29 @@
-export const loginUser = async (data) => {
-  // TEMP MOCK LOGIN: Simulates a 500ms network request
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      // Default role is student
-      let assignedRole = "student";
-      
-      // Check if the user typed "parent" or "mentor" in the email field
-      const emailInput = data?.email?.toLowerCase() || "";
-      if (emailInput.includes("parent")) assignedRole = "parent";
-      if (emailInput.includes("mentor")) assignedRole = "mentor";
+import { apiClient } from "./apiClient";
+import { decodeJWT } from "../../utils/jwt";
 
-      resolve({
-        token: `mock-token-${assignedRole}-123`,
-        role: assignedRole,
-      });
-    }, 500);
-  });
+/**
+ * Login — OAuth2 password flow (x-www-form-urlencoded)
+ * JWT payload: { sub, role, user_id, exp }
+ */
+export const loginUser = async ({ email, password }) => {
+  const form = new FormData();
+  form.append("username", email);
+  form.append("password", password);
+
+  const data = await apiClient.post("/api/v1/auth/login", form);
+  const payload = decodeJWT(data.access_token);
+
+  return {
+    token: data.access_token,
+    role: payload?.role || "student",
+    userId: payload?.user_id || null,
+  };
+};
+
+/**
+ * Register — JSON body
+ * Returns: { id, email, role }
+ */
+export const registerUser = async ({ email, password, full_name, role = "student" }) => {
+  return apiClient.post("/api/v1/auth/register", { email, password, full_name, role });
 };
