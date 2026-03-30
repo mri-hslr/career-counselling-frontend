@@ -18,9 +18,7 @@ export default function SignUp() {
     setError("");
     setLoading(true);
     try {
-      // Backend supports: student, mentor, admin (parent maps to admin)
-      const apiRole = form.role === 'parent' ? 'admin' : form.role;
-      await registerUser({ ...form, role: apiRole });
+      await registerUser(form);
       navigate("/signin");
     } catch (err) {
       setError(err.message || "Registration failed. Please try again.");

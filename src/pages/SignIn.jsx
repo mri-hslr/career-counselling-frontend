@@ -23,8 +23,7 @@ export default function SignIn() {
       localStorage.setItem("role", res.role);
       if (res.userId) localStorage.setItem("userId", res.userId);
 
-      // "admin" is the backend role for Parent/Guardian accounts
-      if (res.role === "admin" || res.role === "parent") {
+      if (res.role === "parent" || res.role === "admin") {
         navigate("/parent-dashboard");
       } else if (res.role === "mentor") {
         navigate("/mentor-dashboard");
