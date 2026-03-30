@@ -164,10 +164,24 @@ export default function ProfileCreation() {
     setLoadingStep(true);
     try {
       const data = await getModuleQuestions(mod.key);
+      
+      let questionsObj = data.questions || {};
+
+      // FIX: If the backend nested the questions inside another object 
+      // (e.g., { questions: { academic: { ... } } }), we unwrap it here.
+      const firstValue = Object.values(questionsObj)[0];
+      if (firstValue && typeof firstValue === 'object') {
+          questionsObj = firstValue;
+      }
+
       const filtered = {};
-      Object.entries(data.questions || {}).forEach(([k, v]) => {
-        if (v !== null) filtered[k] = v;
+      Object.entries(questionsObj).forEach(([k, v]) => {
+        // Double check we are only saving text/strings, not objects!
+        if (v !== null && typeof v === 'string') {
+            filtered[k] = v;
+        }
       });
+      
       setAllQuestions(prev => ({ ...prev, [mod.key]: filtered }));
     } catch (e) {
       console.error(e);
@@ -178,8 +192,13 @@ export default function ProfileCreation() {
 
   function handleAnswer(key, val) {
     setAnswers(prev => ({ ...prev, [key]: val }));
+    
     if (key === 'full_name' && val) {
       localStorage.setItem('harmony_profile_name', val.split(' ')[0]);
+    }
+    // ADD THESE 3 LINES: Save the grade when they select it
+    if (key === 'current_class' && val) {
+      localStorage.setItem('harmony_student_grade', val);
     }
   }
 

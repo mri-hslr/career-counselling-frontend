@@ -45,22 +45,53 @@ export default function AptitudeTest() {
   // Get grade from localStorage profile answers
   const grade = (() => {
     try {
-      const name = localStorage.getItem('harmony_profile_name');
-      return '10'; // Default grade; could be parsed from profile answers
-    } catch { return '10'; }
+      const savedGrade = localStorage.getItem('harmony_student_grade');
+      if (savedGrade) {
+        // This extracts just the number. So "12th" becomes "12", "9th" becomes "9"
+        const match = savedGrade.match(/\d+/); 
+        return match ? match[0] : '10'; 
+      }
+      return '10'; // Fallback if they somehow skipped the profile
+    } catch { 
+      return '10'; 
+    }
   })();
 
   useEffect(() => {
+    console.log(`Fetching aptitude pool for grade: ${grade}`);
+    
     getAptitudePool(grade)
       .then(data => {
-        if (data.questions && data.questions.length > 0) {
-          setQuestions(data.questions);
+        console.log("✅ RAW BACKEND RESPONSE:", data); // Let's see exactly what the backend sent!
+
+        // Handle different possible backend JSON shapes
+        let backendQuestions = [];
+        if (Array.isArray(data)) {
+          backendQuestions = data; // If backend returns a direct array
+        } else if (data.questions) {
+          backendQuestions = data.questions; 
+        } else if (data.pool) {
+          backendQuestions = data.pool; // Common AI backend key
+        } else if (data.data) {
+          backendQuestions = data.data; 
+        }
+
+        if (backendQuestions && backendQuestions.length > 0) {
+          console.log("Loaded questions from backend successfully!");
+          
+          // Optional: Verify the first question has the keys React expects
+          console.log("Sample backend question structure:", backendQuestions[0]);
+          
+          setQuestions(backendQuestions);
+          setUsingFallback(false);
         } else {
+          console.warn("Backend responded, but no questions array was found. Using fallback.");
           setQuestions(FALLBACK_QUESTIONS);
           setUsingFallback(true);
         }
       })
-      .catch(() => {
+      .catch((error) => {
+        console.error("❌ API CALL FAILED:", error);
         setQuestions(FALLBACK_QUESTIONS);
         setUsingFallback(true);
       })
