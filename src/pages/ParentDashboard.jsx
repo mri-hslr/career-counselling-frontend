@@ -11,15 +11,9 @@ import { getCurrentUser, getUserDisplayName, clearUserSession } from '../utils/j
 import { mentorshipApi } from '../services/api/mentorshipApi';
 import { parentStudentApi } from '../services/api/parentStudentApi';
 import { roadmapApi } from '../services/api/roadmapApi';
-
 // 👉 Premium animations imported correctly
 import { SplitText, BlurText, ShinyOverlay } from "../components/ui/Animations";
 
-const IMPORTANCE_META = {
-  CRITICAL:       { label: 'Critical',        bg: 'bg-rose-50',    text: 'text-rose-700',    border: 'border-rose-200',    gradient: 'from-rose-500 to-pink-400' },
-  STRATEGIC:      { label: 'Strategic',       bg: 'bg-amber-50',   text: 'text-amber-700',   border: 'border-amber-200',   gradient: 'from-amber-500 to-orange-400' },
-  SPECIALIZATION: { label: 'Specialization',  bg: 'bg-violet-50',  text: 'text-violet-700',  border: 'border-violet-200',  gradient: 'from-violet-500 to-purple-400' },
-};
 
 const TABS = [
   { id: 'overview',   label: 'Overview',        icon: LineChart },
@@ -54,8 +48,8 @@ function Toast({ message, type, onClose }) {
 }
 
 // ── OVERVIEW TAB ──────────────────────────────────────────────────────────────
-function OverviewTab({ linkedStudentId, navigate }) {
-  const isLinked = !!linkedStudentId;
+function OverviewTab({ linkedStudent, navigate }) {
+  const isLinked = !!linkedStudent;
   const springTransition = { type: "spring", stiffness: 400, damping: 30 };
 
   return (
@@ -200,7 +194,7 @@ function LinkTab({ linkedStudent, onLinked, toast }) {
       }
     } catch (error) {
       console.error("Linking error:", error);
-      toast(error.response?.data?.detail || "Failed to link account. Please check the code.", "error");
+      toast(error.message || "Failed to link account. Please check the code.", "error");
     } finally {
       setSubmitting(false);
     }
@@ -301,18 +295,14 @@ function RoadmapTab({ linkedStudent }) {
     if (linkedStudent) fetchRoadmap();
   }, [linkedStudent]);
 
-  async function fetchRoadmap() {
+async function fetchRoadmap() {
     setLoading(true);
     setError('');
     try {
-      // Because the parent is querying the active roadmap, you might need a dedicated API call 
-      // in your backend for parents to fetch their linked student's roadmap.
-      // If `roadmapApi.getActiveRoadmap()` uses the logged-in user's token, it will fail for parents!
-      // Ensure you are using the correct parent-specific endpoint here.
-      const data = await roadmapApi.getActiveRoadmap(); 
+      const data = await roadmapApi.getStudentRoadmap(linkedStudent.id);
       setRoadmap(data);
     } catch (e) {
-      setError(e.response?.data?.detail || 'Failed to load roadmap or child has not started one yet.');
+      setError(e.message || 'Failed to load roadmap or child has not started one yet.');
     } finally {
       setLoading(false);
     }
@@ -377,7 +367,7 @@ function RoadmapTab({ linkedStudent }) {
           <span className="px-3 py-1 bg-white/20 rounded-full text-xs font-bold uppercase tracking-wider mb-4 inline-block border border-white/30">
             {linkedStudent.full_name}'s Career Path
           </span>
-          <BlurText text={roadmap.career_title} className="text-3xl font-extrabold mb-3 block" />
+          <BlurText text={roadmap.title || ''} className="text-3xl font-extrabold mb-3 block" />
           <div className="flex flex-wrap gap-3">
              <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-xl px-3 py-2 border border-white/30 text-sm font-bold">
                 <Target size={14} /> Status: {roadmap.status}
@@ -453,7 +443,7 @@ function FeedbackTab({ linkedStudent, toast }) {
     
     setSubmitting(true);
     try {
-      await submitParentFeedback({ student_id: linkedStudent.id, ...form });
+      await mentorshipApi.submitParentFeedback({ student_id: linkedStudent.id, ...form });
       setForm({ study_habits: '', behavior_insights: '' });
       toast("Feedback submitted! It will shape your child's roadmap.", "success");
     } catch (err) {
@@ -476,12 +466,12 @@ function FeedbackTab({ linkedStudent, toast }) {
 
   return (
     <div className="max-w-xl space-y-6">
-      {!linkedStudentId && (
+      {/* {!linkedStudent && (
         <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-2xl px-5 py-4">
           <AlertCircle size={18} className="text-amber-500 shrink-0" />
           <p className="text-sm font-semibold text-amber-700">Link your child's account first before submitting feedback.</p>
         </div>
-      )}
+      )} */}
 
       <motion.div 
         initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}

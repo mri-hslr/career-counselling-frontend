@@ -38,3 +38,23 @@ export const submitAssessment = ({ userId, moduleKey, payload }) =>
  */
 export const buildProfile = (profileData) =>
   apiClient.post("/api/v1/profile/build", profileData);
+
+/**
+ * PATCH /api/v1/assessments/save-progress
+ * Saves mid-test state so the student can resume later.
+ */
+export const saveTestProgress = ({ userId, testKey, sessionQuestions, answers, currentIndex }) =>
+  apiClient.patch("/api/v1/assessments/save-progress", {
+    user_id: userId,
+    test_key: testKey,
+    session_questions: sessionQuestions,
+    answers,
+    current_index: currentIndex,
+  });
+
+/**
+ * GET /api/v1/assessments/progress/{testKey}/{userId}
+ * Returns { in_progress, session_questions, answers, current_index } or { in_progress: false }
+ */
+export const getTestProgress = (testKey, userId) =>
+  apiClient.get(`/api/v1/assessments/progress/${testKey}/${userId}`);

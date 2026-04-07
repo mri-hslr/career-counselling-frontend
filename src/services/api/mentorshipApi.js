@@ -71,9 +71,9 @@ export const mentorshipApi = {
   submitMentorFeedback: ({ session_id, notes = "", action_items = "" }) =>
     apiClient.post("/api/v1/mentorship/feedback/mentor/", { session_id, notes, action_items }),
 
-  /** POST /api/v1/mentorship/feedback/parent/ */
+  /** POST /api/v1/parent/feedback */
   submitParentFeedback: ({ student_id, study_habits = "", behavior_insights = "" }) =>
-    apiClient.post("/api/v1/mentorship/feedback/parent/", {
+    apiClient.post("/api/v1/parent/feedback", {
       student_id, study_habits, behavior_insights,
     }),
   
@@ -93,4 +93,26 @@ export const mentorshipApi = {
    */
   joinVideo: (sessionId) =>
     apiClient.post(`/api/v1/sessions/${sessionId}/join-video`, {}),
+
+  // ── CONNECTION REQUESTS (no slot needed) ─────────────────────────────────
+
+  /** POST /api/v1/connections/request — student sends generic connect request */
+  sendConnectionRequest: (mentorId, message = "") =>
+    apiClient.post("/api/v1/connections/request", { mentor_id: mentorId, message }),
+
+  /** GET /api/v1/mentors/requests/pending — mentor views incoming connection requests */
+  getPendingConnectionRequests: () =>
+    apiClient.get("/api/v1/mentors/requests/pending"),
+
+  /** GET /api/v1/mentors/students/:id/profile — mentor views student snapshot */
+  getStudentProfile: (studentId) =>
+    apiClient.get(`/api/v1/mentors/students/${studentId}/profile`),
+
+  /** PATCH /api/v1/connections/:id/accept */
+  acceptConnectionRequest: (requestId) =>
+    apiClient.patch(`/api/v1/connections/${requestId}/accept`, {}),
+
+  /** PATCH /api/v1/connections/:id/reject */
+  rejectConnectionRequest: (requestId) =>
+    apiClient.patch(`/api/v1/connections/${requestId}/reject`, {}),
 };

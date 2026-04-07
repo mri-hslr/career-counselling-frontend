@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Map, Video, Settings, LogOut,
   Bell, User, Brain, Zap, Sparkles, ChevronRight, CheckCircle2,
   Lock, ArrowRight, Users, Loader2, TrendingUp,
-  CalendarClock, X, Radio, MessageSquare, PhoneCall
+  CalendarClock, X, Radio, MessageSquare, PhoneCall, Trash2
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -14,6 +14,7 @@ import { getSelectedCareer } from '../services/api/careerApi';
 import { roadmapApi } from '../services/api/roadmapApi';
 import { parentStudentApi } from '../services/api/parentStudentApi';
 import { mentorshipApi } from '../services/api/mentorshipApi';
+import { chatApi } from '../services/api/chatApi';
 import { apiClient } from '../services/api/apiClient';
 import VideoCallRoom from '../components/VideoCallRoom';
 
@@ -142,11 +143,35 @@ function PersonalityCompletedCard({ personalityData }) {
 }
 
 // Completed test card for aptitude
+function normalizeAptiData(data) {
+  if (!data) return { q: 0, l: 0, v: 0, max: 5 };
+  // Format A (new): { scores: { quantitative, logical, verbal, max_score } }
+  if (data.scores) {
+    const s = data.scores;
+    const max = s.max_score ?? 5;
+    // Old format stored 0-100 percentages; new format stores raw counts <= max
+    const norm = (n) => ((n ?? 0) > max ? Math.round(((n ?? 0) / 100) * max) : (n ?? 0));
+    return { q: norm(s.quantitative), l: norm(s.logical), v: norm(s.verbal), max };
+  }
+  // Format C: { quantitative_aptitude: { score, total }, logical_reasoning, verbal_ability }
+  if (data.quantitative_aptitude || data.logical_reasoning || data.verbal_ability) {
+    const max = Math.max(
+      data.quantitative_aptitude?.total ?? 15,
+      data.logical_reasoning?.total ?? 15,
+      data.verbal_ability?.total ?? 15
+    );
+    return {
+      q: data.quantitative_aptitude?.score ?? 0,
+      l: data.logical_reasoning?.score ?? 0,
+      v: data.verbal_ability?.score ?? 0,
+      max,
+    };
+  }
+  return { q: 0, l: 0, v: 0, max: 5 };
+}
+
 function AptitudeCompletedCard({ aptiData }) {
-  const q = aptiData?.quantitative ?? 0;
-  const l = aptiData?.logical ?? 0;
-  const v = aptiData?.verbal ?? 0;
-  const max = aptiData?.max_score ?? 15;
+  const { q, l, v, max } = normalizeAptiData(aptiData);
   return (
     <div className="flex-1 bg-white rounded-3xl border border-emerald-200 p-6 shadow-sm">
       <div className="flex items-center gap-3 mb-3">
@@ -182,7 +207,7 @@ function formatCountdown(secs) {
   return `${s}s`;
 }
 
-function SessionBadge({ session, onChat, onJoinVideo, joiningVideoId }) {
+function SessionBadge({ session, onJoinVideo, joiningVideoId }) {
   const [secondsLeft, setSecondsLeft] = useState(
     Math.max(0, session.seconds_until_start ?? 0)
   );
@@ -239,15 +264,6 @@ function SessionBadge({ session, onChat, onJoinVideo, joiningVideoId }) {
 
       {/* Action buttons row */}
       <div className="flex gap-2">
-        {/* Chat — always available for approved connections */}
-        <motion.button
-          whileTap={{ scale: 0.93 }}
-          onClick={() => onChat(session)}
-          className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-colors"
-        >
-          <MessageSquare size={13} /> Chat
-        </motion.button>
-
         {/* Join Video Call */}
         <motion.button
           whileTap={{ scale: 0.93 }}
@@ -265,7 +281,7 @@ function SessionBadge({ session, onChat, onJoinVideo, joiningVideoId }) {
   );
 }
 
-function SessionsPanel({ onClose, onChat, onJoinVideo, joiningVideoId }) {
+function SessionsPanel({ onClose, onJoinVideo, joiningVideoId }) {
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -299,8 +315,8 @@ function SessionsPanel({ onClose, onChat, onJoinVideo, joiningVideoId }) {
               <CalendarClock size={18} className="text-blue-600" />
             </div>
             <div>
-              <h2 className="font-extrabold text-slate-800 text-sm">Sessions & Messages</h2>
-              <p className="text-xs text-slate-400">Chat or join video with your mentors</p>
+              <h2 className="font-extrabold text-slate-800 text-sm">Upcoming Sessions</h2>
+              <p className="text-xs text-slate-400">Join your scheduled video calls</p>
             </div>
           </div>
           <button
@@ -328,7 +344,6 @@ function SessionsPanel({ onClose, onChat, onJoinVideo, joiningVideoId }) {
               <SessionBadge
                 key={session.session_id}
                 session={session}
-                onChat={onChat}
                 onJoinVideo={onJoinVideo}
                 joiningVideoId={joiningVideoId}
               />
@@ -338,10 +353,181 @@ function SessionsPanel({ onClose, onChat, onJoinVideo, joiningVideoId }) {
 
         <div className="px-5 py-4 border-t border-slate-100 bg-white shrink-0">
           <p className="text-[10px] text-slate-400 text-center font-medium">
-            Chat is available anytime · Video opens a live Dyte call
+            Video calls open a live Dyte session with your mentor
           </p>
         </div>
       </motion.div>
+    </motion.div>
+  );
+}
+
+// ============================================================================
+// DIRECT CHAT PANEL (24-hour ephemeral, connection-based)
+// ============================================================================
+
+function DirectChatPanel({ onClose, onOpenChat }) {
+  const [connections, setConnections]         = useState([]);
+  const [loading, setLoading]                 = useState(true);
+  const [confirmDelete, setConfirmDelete]     = useState(null); // contact to delete
+  const [deleting, setDeleting]               = useState(false);
+
+  useEffect(() => {
+    chatApi.getConnections()
+      .then(data => setConnections(Array.isArray(data) ? data : []))
+      .catch(() => toast.error('Failed to load connections.'))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const handleDeleteConnection = async () => {
+    if (!confirmDelete) return;
+    setDeleting(true);
+    try {
+      await chatApi.deleteConnection(confirmDelete.user_id);
+      setConnections(prev => prev.filter(c => c.user_id !== confirmDelete.user_id));
+      toast.success(`Disconnected from ${confirmDelete.full_name}.`);
+      setConfirmDelete(null);
+    } catch (err) {
+      toast.error(err.message || 'Failed to delete connection.');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <motion.div
+        initial={{ x: '100%' }}
+        animate={{ x: 0 }}
+        exit={{ x: '100%' }}
+        transition={{ type: 'spring', stiffness: 350, damping: 30 }}
+        className="absolute right-0 top-0 h-full w-full max-w-sm bg-slate-50 shadow-2xl flex flex-col"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="bg-white border-b border-slate-100 px-6 py-5 flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 bg-blue-50 rounded-xl flex items-center justify-center">
+              <MessageSquare size={18} className="text-blue-600" />
+            </div>
+            <div>
+              <h2 className="font-extrabold text-slate-800 text-sm">Direct Messages</h2>
+              <p className="text-xs text-slate-400">Messages vanish after 24 hours</p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-all"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* Connection list */}
+        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
+          {loading ? (
+            <div className="flex flex-col items-center justify-center h-40 gap-3">
+              <Loader2 size={24} className="animate-spin text-blue-400" />
+              <span className="text-sm text-slate-400">Loading connections...</span>
+            </div>
+          ) : connections.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-40 gap-3 text-center">
+              <Users size={32} className="text-slate-300" />
+              <p className="text-sm text-slate-400 font-medium">
+                No accepted connections yet. Connect with a mentor first.
+              </p>
+            </div>
+          ) : (
+            connections.map(contact => (
+              <div
+                key={contact.user_id}
+                className="flex items-center gap-3 px-4 py-3.5 bg-white rounded-2xl border border-slate-100 hover:border-blue-200 hover:shadow-md transition-all"
+              >
+                <motion.button
+                  whileTap={{ scale: 0.97 }}
+                  onClick={() => {
+                    onOpenChat({ other_user_id: contact.user_id, other_party_name: contact.full_name });
+                    onClose();
+                  }}
+                  className="flex items-center gap-3 flex-1 min-w-0 text-left"
+                >
+                  <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center font-black text-sm shrink-0">
+                    {contact.full_name?.[0]?.toUpperCase() || 'M'}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-slate-800 text-sm truncate">{contact.full_name}</p>
+                    <p className="text-xs text-slate-400 mt-0.5 capitalize">{contact.role}</p>
+                  </div>
+                  <MessageSquare size={16} className="text-blue-400 shrink-0" />
+                </motion.button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); setConfirmDelete(contact); }}
+                  className="p-2 rounded-xl text-slate-300 hover:text-red-500 hover:bg-red-50 transition-all shrink-0"
+                  title="Remove connection"
+                >
+                  <Trash2 size={15} />
+                </button>
+              </div>
+            ))
+          )}
+        </div>
+
+        <div className="px-5 py-4 border-t border-slate-100 bg-white shrink-0">
+          <p className="text-[10px] text-slate-400 text-center font-medium">
+            All messages are ephemeral and vanish after 24 hours
+          </p>
+        </div>
+      </motion.div>
+
+      {/* Delete confirmation modal */}
+      <AnimatePresence>
+        {confirmDelete && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4"
+            onClick={() => setConfirmDelete(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={e => e.stopPropagation()}
+              className="bg-white rounded-3xl p-6 w-full max-w-xs shadow-2xl"
+            >
+              <div className="w-12 h-12 bg-red-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <Trash2 size={22} className="text-red-500" />
+              </div>
+              <h3 className="font-extrabold text-slate-800 text-center text-base mb-1">Remove Connection?</h3>
+              <p className="text-xs text-slate-500 text-center mb-5">
+                This will permanently sever your connection with <span className="font-bold text-slate-700">{confirmDelete.full_name}</span> and delete all chat history.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setConfirmDelete(null)}
+                  className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-sm font-bold hover:bg-slate-50 transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDeleteConnection}
+                  disabled={deleting}
+                  className="flex-1 py-2.5 rounded-xl bg-red-500 text-white text-sm font-bold hover:bg-red-600 disabled:opacity-60 transition-all flex items-center justify-center gap-2"
+                >
+                  {deleting ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                  {deleting ? 'Removing...' : 'Remove'}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }
@@ -361,6 +547,7 @@ export default function Dashboard() {
   const [recommendedMentors, setRecommendedMentors] = useState([]);
   const [loadingMentors, setLoadingMentors] = useState(false);
   const [showSessionsPanel, setShowSessionsPanel] = useState(false);
+  const [showDirectChat, setShowDirectChat] = useState(false);
   const [activeChat, setActiveChat] = useState(null); // { other_user_id, other_party_name }
   const [activeVideoCall, setActiveVideoCall] = useState(null); // { token, meeting_id }
   const [joiningVideoId, setJoiningVideoId] = useState(null);
@@ -380,8 +567,10 @@ export default function Dashboard() {
     fetchSavedCareer();
   }, []);
 
-  // Fetch Invite Code
+  // Fetch Invite Code — students only (mentors/parents would get 403)
   useEffect(() => {
+    const role = localStorage.getItem('role');
+    if (role !== 'student') return;
     const getInviteCode = async () => {
       try {
         const response = await parentStudentApi.getStudentInviteCode();
@@ -505,7 +694,7 @@ export default function Dashboard() {
             <NavItem icon={Sparkles} label="Career Matches" onClick={() => navigate('/career-recommendations')} />
             <NavItem icon={Map} label="My Roadmap" onClick={() => navigate('/roadmap')} />
             <NavItem icon={Video} label="Mentorship" onClick={() => navigate('/mentorship')} />
-            <NavItem icon={MessageSquare} label="Messages" onClick={() => setShowSessionsPanel(true)} />
+            <NavItem icon={MessageSquare} label="Messages" onClick={() => setShowDirectChat(true)} />
             <NavItem icon={CalendarClock} label="Sessions" onClick={() => setShowSessionsPanel(true)} />
             <NavItem icon={Settings} label="Settings" />
           </nav>
@@ -753,14 +942,23 @@ export default function Dashboard() {
         )}
       </main>
 
-      {/* Sessions & Messages Drawer */}
+      {/* Sessions Drawer */}
       <AnimatePresence>
         {showSessionsPanel && (
           <SessionsPanel
             onClose={() => setShowSessionsPanel(false)}
-            onChat={handleOpenChat}
             onJoinVideo={handleJoinVideo}
             joiningVideoId={joiningVideoId}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Direct Messages (24h ephemeral) Drawer */}
+      <AnimatePresence>
+        {showDirectChat && (
+          <DirectChatPanel
+            onClose={() => setShowDirectChat(false)}
+            onOpenChat={(contact) => setActiveChat(contact)}
           />
         )}
       </AnimatePresence>

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Send, Wifi, WifiOff, Loader2, ArrowLeft, CheckCheck } from 'lucide-react';
 import { toISTTime } from '../utils/time';
+import { chatApi } from '../services/api/chatApi';
 
 // Derive WS base from the same host as the HTTP API so they always match.
 // http://host → ws://host  |  https://host → wss://host
@@ -33,9 +34,24 @@ export default function SessionChat({ otherUserId, otherPartyName, onClose }) {
   const wsRef = useRef(null);
   const bottomRef = useRef(null);
   const pendingSent = useRef(new Set());
-  // Boolean lock — prevents a second connection even if the first failed and wsRef was nulled
-  const connectingRef = useRef(false);
+  const connectingRef = useRef(false); // prevents double WebSocket connection
   const token = localStorage.getItem('token');
+
+  // Load 24h message history on mount
+  useEffect(() => {
+    chatApi.getMessages(otherUserId)
+      .then(history => {
+        const mapped = (history || []).map(m => ({
+          id: `hist-${m.sent_at}-${Math.random()}`,
+          sender: m.is_me ? 'You' : otherPartyName,
+          text: m.message,
+          timestamp: m.sent_at,
+          isMe: m.is_me,
+        }));
+        setMessages(mapped);
+      })
+      .catch(() => {});
+  }, [otherUserId, otherPartyName]);
 
   useEffect(() => {
     // Hard lock: never open a second socket while one is in-flight or open

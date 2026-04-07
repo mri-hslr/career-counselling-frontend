@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  ArrowLeft, Star, Calendar, MessageSquare, Loader2, 
-  ShieldCheck, Clock, CheckCircle2, X, Briefcase 
+import {
+  ArrowLeft, Star, Calendar, MessageSquare, Loader2,
+  ShieldCheck, Clock, CheckCircle2, X, Briefcase, UserPlus
 } from 'lucide-react';
 import { mentorshipApi } from '../services/api/mentorshipApi';
 import { toast } from 'react-hot-toast';
@@ -17,7 +17,7 @@ export default function MentorProfilePublic() {
   const [mentor, setMentor] = useState(null);
   const [slots, setSlots] = useState([]);
   const [loading, setLoading] = useState(true);
-  
+
   // Booking States
   const [isBooking, setIsBooking] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState(null);
@@ -27,6 +27,10 @@ export default function MentorProfilePublic() {
   // Success States
   const [requestSent, setRequestSent] = useState(false);
   const [backendMessage, setBackendMessage] = useState("");
+
+  // Connection States
+  const [connecting, setConnecting] = useState(false);
+  const [connected, setConnected] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
@@ -46,6 +50,19 @@ export default function MentorProfilePublic() {
     };
     loadData();
   }, [mentorId, navigate]);
+
+  const handleConnect = async () => {
+    setConnecting(true);
+    try {
+      await mentorshipApi.sendConnectionRequest(mentorId, '');
+      setConnected(true);
+      toast.success('Connection request sent! The mentor will review your profile.');
+    } catch (err) {
+      toast.error(err.message || 'Failed to send request.');
+    } finally {
+      setConnecting(false);
+    }
+  };
 
   const handleConfirmBooking = async () => {
     if (!selectedSlot) return;
@@ -107,15 +124,25 @@ export default function MentorProfilePublic() {
                   {mentor.full_name?.[0] || 'M'}
                 </div>
               </div>
-              <button 
-                onClick={() => {
-                  setRequestSent(false); // Reset success state in case they open it again
-                  setIsBooking(true);
-                }}
-                className="px-8 py-4 bg-blue-600 text-white font-black rounded-2xl shadow-lg shadow-blue-200 hover:scale-105 hover:bg-blue-700 transition-all flex items-center gap-2"
-              >
-                <Calendar size={20} /> Book a Session
-              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={handleConnect}
+                  disabled={connecting || connected}
+                  className="px-6 py-4 bg-slate-100 border border-slate-200 text-slate-700 font-black rounded-2xl hover:bg-blue-50 hover:border-blue-200 hover:text-blue-700 transition-all flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {connecting ? <Loader2 size={18} className="animate-spin" /> : connected ? <CheckCircle2 size={18} className="text-emerald-500" /> : <UserPlus size={18} />}
+                  {connected ? 'Requested' : 'Connect'}
+                </button>
+                <button
+                  onClick={() => {
+                    setRequestSent(false);
+                    setIsBooking(true);
+                  }}
+                  className="px-8 py-4 bg-blue-600 text-white font-black rounded-2xl shadow-lg shadow-blue-200 hover:scale-105 hover:bg-blue-700 transition-all flex items-center gap-2"
+                >
+                  <Calendar size={20} /> Book a Session
+                </button>
+              </div>
             </div>
 
             <div className="flex items-center gap-2 mb-2">

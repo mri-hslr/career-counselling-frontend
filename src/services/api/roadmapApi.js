@@ -24,5 +24,10 @@ export const roadmapApi = {
   // 5. Toggle a task
   toggleTaskComplete: async (taskId) => {
     return apiClient.patch(`/api/v1/roadmaps/tasks/${taskId}/complete`, {});
-  }
+  },
+
+  // 6. Fetch another student's roadmap (for mentors/parents)
+  getStudentRoadmap: async (studentId) => {
+    return apiClient.get(`/api/v1/roadmaps/student/${studentId}`);
+  },
 };

@@ -225,12 +225,20 @@ export default function ProfileCreation() {
     }
   }
 
+  // Fields that are rendered as free text/textarea — minimum 5 chars required
+  const TEXT_FIELD_KEYS = new Set([
+    'full_name', 'state', 'strongest_subject', 'weakest_subject', 'favorite_subject',
+    'achievements', 'biggest_distraction', 'biggest_strength', 'biggest_weakness',
+    'preferred_activity', 'dream_career', 'life_direction', 'ten_year_vision',
+    'what_drives_you', 'what_stops_you', 'no_constraints_vision', 'five_year_goal',
+  ]);
+
   async function handleNext() {
     const mod = currentModule;
     const questions = allQuestions[mod.key] || {};
     const requiredKeys = Object.keys(questions);
 
-    // 1. STRICT VALIDATION: Ensure no fields are empty
+    // 1. Check for empty fields
     const missingFields = requiredKeys.filter(k => {
       const val = answers[k];
       return val === undefined || val === null || val.toString().trim() === '';
@@ -241,7 +249,23 @@ export default function ProfileCreation() {
         style: { border: '1px solid #ef4444', padding: '16px', color: '#7f1d1d', fontWeight: 'bold' },
         iconTheme: { primary: '#ef4444', secondary: '#fee2e2' },
       });
-      return; // Stop execution here if validation fails
+      return;
+    }
+
+    // 2. Check minimum length on free-text fields (prevents garbage like "sss")
+    const tooShortFields = requiredKeys.filter(k => {
+      if (!TEXT_FIELD_KEYS.has(k)) return false;
+      const val = (answers[k] || '').toString().trim();
+      const minLen = ['ten_year_vision', 'no_constraints_vision', 'achievements'].includes(k) ? 10 : 5;
+      return val.length < minLen;
+    });
+
+    if (tooShortFields.length > 0) {
+      toast.error('Some answers are too short — please write at least a few words.', {
+        style: { border: '1px solid #f97316', padding: '16px', color: '#7c2d12', fontWeight: 'bold' },
+        iconTheme: { primary: '#f97316', secondary: '#ffedd5' },
+      });
+      return;
     }
 
     // 2. SAVE TO BACKEND

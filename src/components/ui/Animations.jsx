@@ -46,8 +46,8 @@ export const SplitText = ({ text, className = '', delay = 0.03 }) => {
 // ============================================================================
 // 2. FAST BLUR TEXT ANIMATION (Word-by-word)
 // ============================================================================
-export const BlurText = ({ text, delay = 0, className = "" }) => {
-  const words = text.split(" ");
+export const BlurText = ({ text = "", delay = 0, className = "" }) => {
+  const words = (text || "").split(" ");
   return (
     <motion.div
       initial="hidden"

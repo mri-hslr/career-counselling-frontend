@@ -5,7 +5,7 @@ import { CheckCircle2, ArrowLeft, Loader2, Zap, AlertCircle, TrendingUp, Chevron
 import { toast } from 'react-hot-toast';
 
 import { apiClient } from '../services/api/apiClient';
-import { getAptitudePool, submitAssessment } from '../services/api/assessmentApi';
+import { getAptitudePool, submitAssessment, saveTestProgress, getTestProgress } from '../services/api/assessmentApi';
 import { getCurrentUser } from '../utils/jwt';
 
 // ─── Result Screen Component ──────────────────────────────────────────────────
@@ -176,41 +176,43 @@ export default function AptitudeTest() {
     async function init() {
       try {
         const me = await apiClient.get('/api/v1/auth/users/me');
-        console.log("👤 Auth/Me Response:", me);
 
-        // SYNC: Pulling the data from the backend
+        // Check if already completed
         const rawData = me.apti_data || {};
-        
-        // If your DB has {"scores": {...}}, we want the contents of 'scores'
-        // If your DB is flat {"verbal": 80...}, we want the whole thing
         const finalScores = rawData.scores ? rawData.scores : rawData;
+        // Only consider completed if there are non-progress keys (not in-progress marker)
+        const hasCompletedScores = Object.keys(finalScores).filter(k => !k.startsWith('_')).length > 0
+          && finalScores._status !== 'in_progress';
 
-        // If aptitude_done is true OR the object isn't empty
-        if (me.progress?.aptitude_done || Object.keys(finalScores).length > 0) {
-          console.log("🎯 Setting AptiData state to:", finalScores);
+        if (hasCompletedScores) {
           setAptiData(finalScores);
           setStatus('completed');
-          return; 
+          return;
+        }
+
+        // Check for in-progress session to resume
+        const progressData = await getTestProgress('aptitude', me.user_id).catch(() => null);
+        if (progressData?.in_progress && progressData.session_questions?.length > 0) {
+          const pool = await getAptitudePool(targetGrade).catch(() => ({ questions: [] }));
+          setMasterPool(pool?.questions || []);
+          setSessionQuestions(progressData.session_questions);
+          // Restore answers keyed by index (convert string keys back to numbers where needed)
+          setAnswers(progressData.answers || {});
+          setCurrentIndex(progressData.current_index || 0);
+          setStatus('testing');
+          return;
         }
 
         const localGrade = localStorage.getItem('harmony_student_grade');
-        
-        // 1. Extract the raw number (e.g., "7th" -> 7), default to 8
-        const extractedNum = localGrade?.toString().match(/\d+/) 
-          ? parseInt(localGrade.toString().match(/\d+/)[0], 10) 
+        const extractedNum = localGrade?.toString().match(/\d+/)
+          ? parseInt(localGrade.toString().match(/\d+/)[0], 10)
           : 8;
 
-        // 2. Map to your database ranges
-        let mappedGrade = '6-8'; // Default fallback
-        if (extractedNum >= 6 && extractedNum <= 8) {
-          mappedGrade = '6-8';
-        } else if (extractedNum >= 9 && extractedNum <= 11) {
-          mappedGrade = '9-11';
-        } else if (extractedNum >= 12) {
-          mappedGrade = '12'; // Catches 12th and College (if college has numbers like 1, 2, 3, you might need to adjust this)
-        }
+        let mappedGrade = '6-8';
+        if (extractedNum >= 6 && extractedNum <= 8) mappedGrade = '6-8';
+        else if (extractedNum >= 9 && extractedNum <= 11) mappedGrade = '9-11';
+        else if (extractedNum >= 12) mappedGrade = '12';
 
-        // 3. Set the target grade exactly as the backend expects it
         setTargetGrade(mappedGrade);
 
         const pool = await getAptitudePool(mappedGrade);
@@ -219,7 +221,7 @@ export default function AptitudeTest() {
 
         if (questions.length > 0) {
           const categories = [...new Set(questions.map(q => q.category))];
-          const initialSet = categories.map(cat => 
+          const initialSet = categories.map(cat =>
             questions.find(q => q.category === cat && q.difficulty === 'Easy')
           ).filter(Boolean);
 
@@ -234,7 +236,7 @@ export default function AptitudeTest() {
       }
     }
     init();
-  }, []);
+  }, []); // eslint-disable-line
 
   const currentQuestion = sessionQuestions[currentIndex];
   const totalInSession = 15;
@@ -244,9 +246,22 @@ export default function AptitudeTest() {
     if (submitting) return;
     const letter = optionText.substring(0, 1).toUpperCase();
     const qId = currentQuestion.id || currentIndex;
-    
-    setAnswers(prev => ({ ...prev, [qId]: letter }));
+
+    const updatedAnswers = { ...answers, [qId]: letter };
+    setAnswers(updatedAnswers);
     const isCorrect = letter === currentQuestion.answer;
+
+    // Auto-save progress silently after each answer (fire-and-forget)
+    const userId = user?.userId;
+    if (userId) {
+      saveTestProgress({
+        userId,
+        testKey: 'aptitude',
+        sessionQuestions,
+        answers: updatedAnswers,
+        currentIndex,
+      }).catch(() => {}); // fire-and-forget, don't block UX
+    }
 
     if (currentIndex < totalInSession - 1) {
       setTimeout(() => navigateNextAdaptive(isCorrect), 400);
@@ -301,12 +316,13 @@ export default function AptitudeTest() {
         max_score: 5 
       };
 
+      // Final submit — clears the in_progress marker by overwriting with completed scores
       await submitAssessment({
         userId: user?.userId,
         moduleKey: 'aptitude',
         payload: { answers, scores: calculatedScores, target_grade: targetGrade },
       });
-      
+
       localStorage.setItem('harmony_aptitude_done', 'true');
       setAptiData(calculatedScores);
       setStatus('completed');
