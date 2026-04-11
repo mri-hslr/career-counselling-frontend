@@ -8,7 +8,7 @@ services:
     environment:
       # If you don't have the backend IP yet, you can leave this as a placeholder
       # or point it to your intended future URL.
-      - VITE_API_BASE_URL=http://your-future-vps-ip:8000
+      - VITE_API_BASE_URL=http://187.127.139.208:8000/
     ports:
       - "5173:5173"
     # volumes are usually for local development; for VPS deployment, 
