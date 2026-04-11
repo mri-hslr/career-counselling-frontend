@@ -1,38 +1,4 @@
-version: '3.8'
-
 services:
-  # Database Service (PostgreSQL)
-  db:
-    image: postgres:15-alpine
-    container_name: career-ai-db
-    restart: always
-    environment:
-      POSTGRES_USER: ${DB_USER:-postgres}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-password}
-      POSTGRES_DB: ${DB_NAME:-career_ai}
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-
-  # FastAPI Backend Service
-  backend:
-    build: 
-      context: ./backend # Ensure this points to your FastAPI directory
-      dockerfile: Dockerfile
-    container_name: career-ai-backend
-    restart: always
-    environment:
-      DATABASE_URL: postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-password}@db:5432/${DB_NAME:-career_ai}
-      GEMINI_API_KEY: ${GEMINI_API_KEY}
-    ports:
-      - "8000:8000"
-    depends_on:
-      - db
-    volumes:
-      - ./backend:/app
-
-  # Vite React Frontend Service
   frontend:
     build:
       context: .
@@ -40,14 +6,13 @@ services:
     container_name: career-ai-frontend
     restart: always
     environment:
-      VITE_API_BASE_URL: http://localhost:8000
+      # If you don't have the backend IP yet, you can leave this as a placeholder
+      # or point it to your intended future URL.
+      - VITE_API_BASE_URL=http://your-future-vps-ip:8000
     ports:
       - "5173:5173"
-    depends_on:
-      - backend
+    # volumes are usually for local development; for VPS deployment, 
+    # you can keep them or remove them depending on if you want live-sync.
     volumes:
       - .:/app
       - /app/node_modules
-
-volumes:
-  postgres_data:
