@@ -6,13 +6,7 @@ services:
     container_name: career-ai-frontend
     restart: always
     environment:
-      # If you don't have the backend IP yet, you can leave this as a placeholder
-      # or point it to your intended future URL.
-      - VITE_API_BASE_URL=http://187.127.139.208:8000/
+      # This MUST be the public IP of your VPS
+      - VITE_API_BASE_URL=http://187.127.139.208:8000
     ports:
       - "5173:5173"
-    # volumes are usually for local development; for VPS deployment, 
-    # you can keep them or remove them depending on if you want live-sync.
-    volumes:
-      - .:/app
-      - /app/node_modules
