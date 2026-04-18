@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, ArrowRight, CheckCircle2, Loader2, User, BookOpen, Heart, Compass, Star, DollarSign } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CheckCircle2, Loader2, User, BookOpen, Heart, Compass, Star, DollarSign, Edit3, Target, Zap } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
+import { apiClient } from '../services/api/apiClient';
 import { getModuleQuestions, submitAssessment } from '../services/api/assessmentApi';
 import { getCurrentUser, getUserDisplayName } from '../utils/jwt';
 
@@ -16,8 +17,7 @@ const MODULES = [
   { key: 'financial', label: 'Financial Context',  icon: DollarSign, desc: 'Context to help us recommend practical, tailored paths.' },
 ];
 
-// Configuration for HOW to render the fields (Options, Selects, Textareas).
-// The actual Question Labels will come from your Postgres Database.
+// Configuration for HOW to render the fields
 const QUESTION_CONFIGS = {
   // profile
   full_name: { type: 'text', placeholder: 'e.g. John Doe' },
@@ -161,6 +161,93 @@ function QuestionField({ questionKey, value, onChange }) {
   );
 }
 
+// ─── Completion Modal Component ────────────────────────────────────────────────
+function ProfileCompletedModal({ onRetake, profileData }) {
+  const navigate = useNavigate();
+
+  // Safely extract proof that data came from the backend
+  const fullName = profileData?.profile_data?.full_name || profileData?.full_name || 'Student';
+  const dreamCareer = profileData?.aspiration_data?.dream_career || 'Exploring Paths';
+  const studyStyle = profileData?.academic_data?.learning_style || 'Not specified';
+
+  return (
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6 font-sans">
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.95 }} 
+        animate={{ opacity: 1, scale: 1 }} 
+        transition={{ duration: 0.5, ease: 'easeOut' }}
+        className="w-full max-w-2xl"
+      >
+        <div className="flex items-center justify-center mb-8">
+          <div className="flex items-center gap-3 px-5 py-2.5 bg-blue-50 border border-blue-200 rounded-full">
+            <CheckCircle2 size={20} className="text-blue-500" />
+            <span className="font-bold text-blue-700 text-sm">Profile Assembly Complete</span>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-3xl border border-slate-100 shadow-lg overflow-hidden">
+          <div className="bg-gradient-to-br from-blue-600 to-indigo-500 p-8 text-white">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center">
+                <User size={24} className="text-white" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-extrabold">Your Core Profile</h1>
+                <p className="text-white/70 text-sm">Your baseline data is successfully assembled in the database.</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-8">
+            
+            {/* Proof from Backend Grid */}
+            <div className="mb-8">
+              <h2 className="font-extrabold text-slate-800 mb-4 text-lg">Saved Data Snapshot</h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                  <div className="w-8 h-8 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center mb-2"><User size={16}/></div>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Identity</p>
+                  <p className="font-bold text-slate-800 truncate">{fullName}</p>
+                </div>
+                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                  <div className="w-8 h-8 bg-emerald-100 text-emerald-600 rounded-lg flex items-center justify-center mb-2"><Target size={16}/></div>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Goal</p>
+                  <p className="font-bold text-slate-800 truncate">{dreamCareer}</p>
+                </div>
+                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                  <div className="w-8 h-8 bg-amber-100 text-amber-600 rounded-lg flex items-center justify-center mb-2"><Zap size={16}/></div>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Style</p>
+                  <p className="font-bold text-slate-800 truncate">{studyStyle.split('(')[0]}</p>
+                </div>
+              </div>
+            </div>
+
+            <p className="text-slate-600 font-medium mb-8 leading-relaxed text-center">
+              The engine is now fully calibrated and ready to process your personality and aptitude assessments.
+            </p>
+
+            <div className="flex gap-3 flex-wrap">
+              <button 
+                onClick={() => navigate('/dashboard')} 
+                className="flex-1 min-w-[200px] flex items-center justify-center gap-2 px-6 py-4 bg-blue-600 text-white font-extrabold rounded-2xl hover:bg-blue-700 transition-all active:scale-95 shadow-lg shadow-blue-200"
+              >
+                Back to Dashboard
+              </button>
+              <button 
+                onClick={onRetake} 
+                className="flex-1 min-w-[200px] flex items-center justify-center gap-2 px-6 py-4 bg-slate-100 text-slate-700 font-extrabold rounded-2xl hover:bg-slate-200 transition-all active:scale-95"
+              >
+                <Edit3 size={18} /> Edit Profile Info
+              </button>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
+
 export default function ProfileCreation() {
   const navigate = useNavigate();
   const user = getCurrentUser();
@@ -169,13 +256,41 @@ export default function ProfileCreation() {
   const [answers, setAnswers] = useState({});
   const [loadingStep, setLoadingStep] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [done, setDone] = useState(false);
+  const [profileData, setProfileData] = useState(null);
+  
+  // Status states
+  const [status, setStatus] = useState('loading'); // 'loading', 'testing', 'completed'
 
   const currentModule = MODULES[step];
 
+  // 1. Reliable Initial Check on Mount
   useEffect(() => {
-    loadQuestions(step);
-  }, [step]);
+    async function checkProfileStatus() {
+      try {
+        const me = await apiClient.get('/api/v1/auth/users/me');
+        
+        // This is the identical, bulletproof check used by Dashboard and PersonalityTest
+        if (me.progress?.profile_done) {
+          setProfileData(me);
+          setStatus('completed');
+          localStorage.setItem('harmony_profile_done', 'true');
+        } else {
+          setStatus('testing');
+        }
+      } catch (err) {
+        console.error("Failed to check profile status:", err);
+        setStatus('testing');
+      }
+    }
+    checkProfileStatus();
+  }, []);
+
+
+  useEffect(() => {
+    if (status === 'testing') {
+      loadQuestions(step);
+    }
+  }, [step, status]);
 
   async function loadQuestions(stepIndex) {
     const mod = MODULES[stepIndex];
@@ -188,18 +303,15 @@ export default function ProfileCreation() {
       // Fetching directly from database template row
       const response = await getModuleQuestions(mod.key);
       
-      // Axios usually wraps responses in `.data`, adapt based on your apiClient
       const questionsObj = response?.data?.questions || response?.questions || {};
 
       const filtered = {};
       Object.entries(questionsObj).forEach(([k, v]) => {
-        // Only keep valid string questions, reject metadata or empty strings
         if (typeof v === 'string' && v.trim() !== '') {
           filtered[k] = v;
         }
       });
 
-      // Handle edge case where DB template row is empty to prevent UI breaking
       if (Object.keys(filtered).length === 0) {
         toast.error(`Database returned empty questions for ${mod.label}.`);
       }
@@ -225,7 +337,6 @@ export default function ProfileCreation() {
     }
   }
 
-  // Fields that are rendered as free text/textarea — minimum 5 chars required
   const TEXT_FIELD_KEYS = new Set([
     'full_name', 'state', 'strongest_subject', 'weakest_subject', 'favorite_subject',
     'achievements', 'biggest_distraction', 'biggest_strength', 'biggest_weakness',
@@ -252,7 +363,7 @@ export default function ProfileCreation() {
       return;
     }
 
-    // 2. Check minimum length on free-text fields (prevents garbage like "sss")
+    // 2. Check minimum length
     const tooShortFields = requiredKeys.filter(k => {
       if (!TEXT_FIELD_KEYS.has(k)) return false;
       const val = (answers[k] || '').toString().trim();
@@ -268,14 +379,13 @@ export default function ProfileCreation() {
       return;
     }
 
-    // 2. SAVE TO BACKEND
+    // 3. SAVE TO BACKEND
     const payload = {};
     requiredKeys.forEach(k => { payload[k] = answers[k] || ''; });
 
     setSubmitting(true);
     try {
       if (user?.userId) {
-        // Send actual response to your /submit-generic API
         await submitAssessment({ userId: user.userId, moduleKey: mod.key, payload });
       }
     } catch (e) {
@@ -284,39 +394,47 @@ export default function ProfileCreation() {
       setSubmitting(false);
     }
 
-    // Move forward or complete
+    // 4. Handle navigation
     if (step < MODULES.length - 1) {
       setStep(s => s + 1);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
+      // It was the final step! Fetch fresh data to prove it saved.
+      try {
+        const me = await apiClient.get('/api/v1/auth/users/me');
+        setProfileData(me);
+      } catch (err) {
+        console.warn("Failed to fetch final proof data", err);
+      }
       localStorage.setItem('harmony_profile_done', 'true');
-      setDone(true);
+      setStatus('completed');
     }
   }
 
-  if (done) {
+  // Show loading spinner while checking auth/db status
+  if (status === 'loading') {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center font-sans p-6">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="bg-white rounded-2xl border border-slate-200 shadow-xl p-12 max-w-lg w-full text-center"
-        >
-          <div className="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg shadow-blue-200">
-            <CheckCircle2 size={40} className="text-white" />
-          </div>
-          <h2 className="text-3xl font-black text-slate-900 mb-4 tracking-tight">Profile Assembled</h2>
-          <p className="text-slate-600 font-medium mb-10 leading-relaxed">
-            Excellent work, {getUserDisplayName() || 'Student'}. Your core profile data has been securely saved to the database. The engine is now ready for your assessments.
-          </p>
-          <button
-            onClick={() => navigate('/dashboard')}
-            className="w-full py-4 bg-slate-900 text-white font-bold rounded-lg shadow-md hover:bg-slate-800 transition-colors"
-          >
-            Access Dashboard
-          </button>
-        </motion.div>
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center font-sans">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 size={40} className="animate-spin text-blue-500" />
+          <p className="text-slate-500 font-semibold">Initializing Engine...</p>
+        </div>
       </div>
+    );
+  }
+
+  // Show the beautifully styled completion modal with data proof
+  if (status === 'completed') {
+    return (
+      <ProfileCompletedModal 
+        profileData={profileData}
+        onRetake={() => {
+          setStatus('testing');
+          setStep(0);
+          setAnswers({});
+          localStorage.removeItem('harmony_profile_done');
+        }} 
+      />
     );
   }
 
@@ -326,7 +444,6 @@ export default function ProfileCreation() {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] font-sans pb-20">
-      {/* SaaS-style Header */}
       <div className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between sticky top-0 z-50">
         <button onClick={() => navigate('/dashboard')} className="flex items-center gap-2 text-slate-500 hover:text-slate-900 font-bold transition-colors">
           <ArrowLeft size={18} /> Exit Builder
@@ -342,7 +459,6 @@ export default function ProfileCreation() {
         </div>
       </div>
 
-      {/* Progress Bar */}
       <div className="w-full h-1 bg-slate-200">
         <motion.div 
           className="h-full bg-blue-600" 
@@ -352,7 +468,6 @@ export default function ProfileCreation() {
         />
       </div>
 
-      {/* Main Content Area */}
       <div className="max-w-2xl mx-auto px-6 mt-12">
         <AnimatePresence mode="wait">
           <motion.div
@@ -362,7 +477,6 @@ export default function ProfileCreation() {
             exit={{ opacity: 0, y: -15 }}
             transition={{ duration: 0.2 }}
           >
-            {/* Header Block */}
             <div className="mb-10 text-center sm:text-left flex flex-col sm:flex-row gap-6 items-center sm:items-start">
               <div className="w-16 h-16 bg-white border border-slate-200 shadow-sm rounded-2xl flex items-center justify-center shrink-0">
                 <Icon size={28} className="text-blue-600" />
@@ -373,7 +487,6 @@ export default function ProfileCreation() {
               </div>
             </div>
 
-            {/* Questions Form */}
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-10 mb-8">
               {loadingStep ? (
                 <div className="flex flex-col items-center justify-center py-20 gap-4 text-slate-500">
@@ -382,7 +495,6 @@ export default function ProfileCreation() {
                 </div>
               ) : (
                 <div className="space-y-8">
-                  {/* Map over the questions dynamically fetched from the database */}
                   {Object.entries(questions).map(([key, questionText]) => (
                     <div key={key} className="space-y-3">
                       <label className="block text-sm font-bold text-slate-900">
@@ -399,7 +511,6 @@ export default function ProfileCreation() {
               )}
             </div>
 
-            {/* Navigation Buttons */}
             {!loadingStep && (
               <div className="flex gap-4 items-center">
                 {step > 0 && (
