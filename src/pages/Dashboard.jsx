@@ -257,7 +257,7 @@ function SessionBadge({ session, onJoinVideo, joiningVideoId }) {
           {!isLive && secondsLeft > 0 && (
             <div className="flex items-center gap-1.5 mt-1">
               <div className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
-              <span className="text-xs font-bold text-amber-600">Starts in {formatCountdown(secondsLeft)}</span>
+              <span className="text-xs font-bold text-amber-600">Starts in <span className="notranslate">{formatCountdown(secondsLeft)}</span></span>
             </div>
           )}
         </div>
@@ -708,7 +708,7 @@ export default function Dashboard() {
             <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
               <motion.div animate={{ width: `${overallPct}%` }} className="h-full bg-gradient-to-r from-blue-500 to-sky-400 rounded-full" />
             </div>
-            <div className="text-xs font-bold text-slate-500 mt-1">{overallPct}% complete</div>
+            <div className="text-xs font-bold text-slate-500 mt-1"><span className="notranslate">{overallPct}</span>% complete</div>
           </div>
           <button
             onClick={handleLogout}
@@ -723,9 +723,13 @@ export default function Dashboard() {
       <main className="flex-1 md:ml-64 p-6 md:p-8">
 
         {/* Header */}
-        <header className="flex justify-between items-center mb-8">
+        {/* Header */}
+        <header className="flex flex-col lg:flex-row lg:items-center justify-between mb-8 gap-4">
           <div>
-            <SplitText text={`Welcome back, ${name}!`} className="text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight flex flex-wrap" />
+            {/* TRANSLATION SAFE: Removed SplitText and added notranslate to the name */}
+            <h1 className="text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight flex flex-wrap gap-2">
+              Welcome back, <span className="notranslate text-blue-600">{name}</span>!
+            </h1>
             <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5, duration: 0.8 }} className="text-slate-500 font-medium mt-1">
               {currentPhase === 1 && "Let's start by building your profile — it only takes 5 minutes."}
               {currentPhase === 2 && "Your profile is set. Time to complete your assessments."}
@@ -733,13 +737,14 @@ export default function Dashboard() {
               {currentPhase === 4 && "Your roadmap is ready. Start your journey today!"}
             </motion.p>
           </div>
-          <div className="flex items-center gap-900">
-  {/* Add it right before your Bell icon / Profile Avatar */}
-  <LanguageSelector />
-  
- 
-</div>
-          <div className="flex items-center gap-3">
+
+          {/* RIGHT SIDE CONTROLS */}
+          <div className="flex flex-wrap items-center gap-3">
+            {/* 👉 NEW: Language Selector safely enclosed */}
+            <div className="shadow-sm rounded-full bg-white">
+              <LanguageSelector />
+            </div>
+
             {/* Mobile logout button */}
             <button
               onClick={handleLogout}
@@ -750,10 +755,9 @@ export default function Dashboard() {
             <button className="relative p-2.5 bg-white border border-slate-200 rounded-full hover:bg-slate-50 hover:scale-105 shadow-sm">
               <Bell size={20} className="text-slate-600" />
             </button>
-            <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-500 to-purple-500 border-2 border-white shadow-sm flex items-center justify-center text-white font-extrabold text-sm">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-500 to-purple-500 border-2 border-white shadow-sm flex items-center justify-center text-white font-extrabold text-sm notranslate">
               {name[0]?.toUpperCase()}
             </div>
-            
           </div>
         </header>
 
@@ -901,7 +905,7 @@ export default function Dashboard() {
           <div className="rounded-3xl p-8 bg-white border border-slate-100 shadow-sm">
             <h3 className="font-extrabold text-slate-800 mb-4">Share with Parents</h3>
             <div className="flex items-center justify-between bg-slate-50 p-3 rounded-xl border">
-              <p className="font-bold text-slate-800 tracking-widest">{inviteCode || 'Loading...'}</p>
+             <p className="font-bold text-slate-800 tracking-widest notranslate">{inviteCode || 'Loading...'}</p>
               <button
                 onClick={() => { navigator.clipboard.writeText(inviteCode); toast.success('Copied!'); }}
                 className="text-blue-500 font-bold"

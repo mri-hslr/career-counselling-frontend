@@ -13,6 +13,7 @@ import { parentStudentApi } from '../services/api/parentStudentApi';
 import { roadmapApi } from '../services/api/roadmapApi';
 // 👉 Premium animations imported correctly
 import { SplitText, BlurText, ShinyOverlay } from "../components/ui/Animations";
+import LanguageSelector from '../components/LanguageSelector';
 
 
 const TABS = [
@@ -117,8 +118,8 @@ function OverviewTab({ linkedStudent, navigate }) {
             <div>
               <p className={`text-xs font-bold uppercase tracking-wider transition-colors ${isLinked ? 'text-emerald-600' : 'text-slate-400'}`}>Link Status</p>
               <p className={`text-xl font-extrabold ${isLinked ? 'text-slate-800' : 'text-slate-500'}`}>
-                {isLinked ? linkedStudent.full_name : 'Not linked'}
-              </p>
+  {isLinked ? <span className="notranslate">{linkedStudent.full_name}</span> : 'Not linked'}
+</p>
             </div>
           </div>
           <div className="flex items-center gap-4 bg-purple-50 p-4 rounded-2xl border border-purple-100">
@@ -216,7 +217,7 @@ function LinkTab({ linkedStudent, onLinked, toast }) {
         </div>
         <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
           <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Student Contact</p>
-          <p className="text-sm font-medium text-slate-700">{linkedStudent.email}</p>
+          <p className="text-sm font-medium text-slate-700 notranslate">{linkedStudent.email}</p>
         </div>
         <button 
           onClick={() => window.dispatchEvent(new CustomEvent('switchTab', { detail: 'roadmap' }))}
@@ -365,7 +366,7 @@ async function fetchRoadmap() {
         <div className="absolute top-0 right-0 w-56 h-56 bg-white/10 rounded-full blur-3xl -translate-y-1/4 translate-x-1/4" />
         <div className="relative z-10">
           <span className="px-3 py-1 bg-white/20 rounded-full text-xs font-bold uppercase tracking-wider mb-4 inline-block border border-white/30">
-            {linkedStudent.full_name}'s Career Path
+            <span className="notranslate">{linkedStudent.full_name}</span>'s Career Path
           </span>
           <BlurText text={roadmap.title || ''} className="text-3xl font-extrabold mb-3 block" />
           <div className="flex flex-wrap gap-3">
@@ -373,7 +374,7 @@ async function fetchRoadmap() {
                 <Target size={14} /> Status: {roadmap.status}
               </div>
               <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-xl px-3 py-2 border border-white/30 text-sm font-bold">
-                <Zap size={14} /> Progress: {Math.round(roadmap.progress_percentage)}%
+                <Zap size={14} /> Progress: <span className="notranslate">{Math.round(roadmap.progress_percentage)}</span>%
               </div>
           </div>
         </div>
@@ -604,22 +605,28 @@ export default function ParentDashboard() {
       <main className="flex-1 md:ml-64 p-6 md:p-8">
         
         {/* 👈 UPDATED HEADER */}
-        <header className="flex justify-between items-center mb-8">
+        {/* 👈 TRANSLATION-SAFE HEADER */}
+        <header className="flex flex-col md:flex-row md:items-center justify-between mb-12 gap-6">
           <div>
-            <div className="text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight flex flex-wrap pb-2">
-              <SplitText text={`Hello, ${name}! `} delay={0.03} />
-            </div>
-            <BlurText
-              text={TABS.find(t => t.id === activeTab)?.label || 'Overview'}
-              delay={0.4}
-              className="text-slate-500 font-medium mt-1 block"
-            />
+            <h1 className="text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight flex flex-wrap gap-2 pb-2">
+              Hello, <span className="notranslate text-purple-600">{name}</span>!
+            </h1>
+            <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4, duration: 0.8 }} className="text-slate-500 font-medium mt-1">
+              {TABS.find(t => t.id === activeTab)?.label || 'Overview'}
+            </motion.p>
           </div>
-          <div className="flex items-center gap-3">
+          
+          {/* RIGHT SIDE CONTROLS */}
+          <div className="flex flex-wrap items-center gap-3">
+            {/* 👉 NEW: Language Selector */}
+            <div className="shadow-sm rounded-full bg-white">
+              <LanguageSelector />
+            </div>
+
             <button className="relative p-2.5 bg-white border border-slate-200 rounded-full hover:bg-slate-50 shadow-sm transition-colors">
               <Bell size={20} className="text-slate-600" />
             </button>
-            <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-purple-400 to-fuchsia-500 border-2 border-white shadow-sm flex items-center justify-center text-white font-extrabold text-sm cursor-pointer hover:scale-105 transition-transform">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-purple-400 to-fuchsia-500 border-2 border-white shadow-sm flex items-center justify-center text-white font-extrabold text-sm cursor-pointer hover:scale-105 transition-transform notranslate">
               {name[0]?.toUpperCase()}
             </div>
           </div>

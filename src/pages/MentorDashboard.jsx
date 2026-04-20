@@ -1330,6 +1330,9 @@ export default function MentorDashboard() {
             </p>
           </div>
           <div className="flex items-center gap-4">
+            <div className="shadow-sm rounded-full">
+              <LanguageSelector />
+            </div>
             <button className="p-3 bg-white border border-slate-200 rounded-2xl text-slate-400 hover:text-emerald-500 shadow-sm relative"
               onClick={() => setActiveTab('connections')}
             >
