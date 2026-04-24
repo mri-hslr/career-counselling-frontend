@@ -5,8 +5,8 @@ services:
       dockerfile: Dockerfile
     container_name: career-ai-frontend
     restart: always
-    environment:
-      # This MUST be the public IP of your VPS
-      - VITE_API_BASE_URL=/api
     ports:
       - "5173:5173"
+    environment:
+      # Use the absolute URL including your BACKEND port!
+      - VITE_API_BASE_URL=http://187.127.139.208:8000
