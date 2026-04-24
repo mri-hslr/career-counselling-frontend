@@ -136,7 +136,7 @@ function PersonalityCompletedCard({ personalityData }) {
         </div>
         <div className="flex-1">
           <p className="font-extrabold text-sm text-slate-800">Personality Test</p>
-          <p className="text-xs text-emerald-600 font-bold">✅ Completed</p>
+          <p className="text-xs text-emerald-600 font-bold"> Completed</p>
         </div>
         <CheckCircle2 size={20} className="text-emerald-500" />
       </div>
@@ -189,7 +189,7 @@ function AptitudeCompletedCard({ aptiData }) {
         </div>
         <div className="flex-1">
           <p className="font-extrabold text-sm text-slate-800">Aptitude Test</p>
-          <p className="text-xs text-emerald-600 font-bold">✅ Completed</p>
+          <p className="text-xs text-emerald-600 font-bold"> Completed</p>
         </div>
         <CheckCircle2 size={20} className="text-emerald-500" />
       </div>
@@ -214,7 +214,7 @@ function GenericCompletedCard({ title, icon: Icon, bgClass, textClass }) {
         </div>
         <div className="flex-1">
           <p className="font-extrabold text-sm text-slate-800">{title}</p>
-          <p className="text-xs text-emerald-600 font-bold">✅ Completed</p>
+          <p className="text-xs text-emerald-600 font-bold"> Completed</p>
         </div>
         <CheckCircle2 size={20} className="text-emerald-500" />
       </div>
@@ -785,7 +785,7 @@ export default function Dashboard() {
               <div className="relative z-10 flex flex-col justify-between">
                 <div>
                   <span className="px-3 py-1 bg-white/20 backdrop-blur-md rounded-full text-xs font-bold uppercase tracking-wider mb-4 inline-block border border-white/30">
-                    {progress.profileDone ? '✅ Phase 1 — Complete' : '📋 Phase 1 — Build Your Profile'}
+                    {progress.profileDone ? ' Phase 1 — Complete' : '📋 Phase 1 — Build Your Profile'}
                   </span>
                   <h2 className="text-2xl font-extrabold mb-2">{progress.profileDone ? 'Profile Complete' : 'Start by building your profile'}</h2>
                   <p className="text-white/80 font-medium max-w-md">{progress.profileDone ? 'Your background and interests have been captured.' : 'Answer questions about your background and aspirations. Takes ~5 minutes.'}</p>
@@ -814,7 +814,7 @@ export default function Dashboard() {
               {progress.assessmentsDone && <ShinyOverlay />}
               <div className="relative z-10">
                 <span className="px-3 py-1 bg-slate-900/10 rounded-full text-xs font-bold uppercase tracking-wider mb-4 inline-block border border-slate-900/10">
-                  {selectedCareer ? '✅ Career Selected' : '✨ Phase 3'}
+                  {selectedCareer ? ' Career Selected' : '✨ Phase 3'}
                 </span>
                 <h3 className="text-2xl font-extrabold mb-2">
                   {selectedCareer ? selectedCareer.title : 'My Discovery Report'}
@@ -841,7 +841,7 @@ export default function Dashboard() {
             <div className="relative z-10 flex flex-col h-full justify-between">
               <div>
                 <span className="px-3 py-1 bg-white/10 backdrop-blur-md rounded-full text-xs font-bold uppercase tracking-wider mb-4 inline-block border border-white/10">
-                  {activeRoadmap ? `✅ ACTIVE: PHASE ${activeRoadmap.phase_number}` : '🗺️ MY ROADMAP'}
+                  {activeRoadmap ? ` ACTIVE: PHASE ${activeRoadmap.phase_number}` : '🗺️ MY ROADMAP'}
                 </span>
                 <h3 className="text-2xl font-extrabold mb-2">Your Career Roadmap</h3>
                 
