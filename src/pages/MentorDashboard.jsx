@@ -14,6 +14,7 @@ import { mentorshipApi } from '../services/api/mentorshipApi';
 import { chatApi } from '../services/api/chatApi';
 import { roadmapApi } from '../services/api/roadmapApi';
 import LanguageSelector from '../components/LanguageSelector';
+import MentorshipFeedback from './MentorshipFeedback'
 // ── SHARED UI ─────────────────────────────────────────────────────────────────
 
 function NavItem({ icon: Icon, label, active, onClick, badge }) {
@@ -1200,17 +1201,7 @@ function ProfileTab({ profileData, onProfileCreated, toast }) {
 
 function FeedbackTab() {
   return (
-    <div className="max-w-4xl">
-      <div className="mb-8">
-        <h3 className="text-2xl font-black text-slate-800">Session Feedback</h3>
-        <p className="text-slate-500 font-bold">Provide insights on student progress and behaviour</p>
-      </div>
-      <div className="bg-white rounded-[2.5rem] p-16 text-center border border-slate-100 shadow-sm">
-        <ClipboardList size={48} className="mx-auto text-slate-200 mb-4" />
-        <h4 className="text-xl font-black text-slate-800 mb-2">No Feedback Pending</h4>
-        <p className="text-slate-500 font-medium">After a session ends, submit feedback here to help parents track progress.</p>
-      </div>
-    </div>
+    <MentorshipFeedback toast={Toast}/>
   );
 }
 
@@ -1310,7 +1301,7 @@ export default function MentorDashboard() {
             </div>
             <div className="min-w-0">
               <p className="font-black text-slate-800 truncate text-sm">{profileData?.full_name || name}</p>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">MENTOR NODE</p>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">MENTOR MODE</p>
             </div>
           </div>
           <button onClick={() => { clearUserSession(); navigate('/'); }}
