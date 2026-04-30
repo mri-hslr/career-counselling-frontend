@@ -42,4 +42,15 @@ export const mentorshipApi = {
     apiClient.post("/api/v1/mentorship/feedback/mentor/", { session_id, notes, action_items }),
   submitParentFeedback: ({ student_id, study_habits = "", behavior_insights = "" }) =>
     apiClient.post("/api/v1/parent/feedback", { student_id, study_habits, behavior_insights }),
+
+  // ── SESSION STUDENT EVALUATIONS (New Additions) ────────────────────
+  getCompletedSessions: () => 
+    apiClient.get("/api/v1/sessions/completed"),
+  getSessionStudents: (sessionId) => 
+    apiClient.get(`/api/v1/sessions/${sessionId}/students`),
+  submitFeedback: (sessionId, studentId, {rating, feedback}) =>
+    apiClient.post(`api/v1/sessions/${sessionId}/students/${studentId}/feedback`, {
+      rating,
+      feedback
+    })
 };
