@@ -11,7 +11,7 @@ import { toast } from 'react-hot-toast';
 // Utils & API
 import { getUserDisplayName } from '../utils/jwt';
 import { reportApi } from '../services/api/reportApi';
-import { selectCareer } from '../services/api/careerApi';
+import { selectCareer, getSelectedCareer } from '../services/api/careerApi';
 
 // The Navigation Tabs
 const DIMENSIONS = [
@@ -32,20 +32,30 @@ export default function DiscoveryReport() {
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState('personality');
   const [selectingCareer, setSelectingCareer] = useState(null);
+  const [lockedCareer, setLockedCareer] = useState(null) // add locked state
 
   useEffect(() => {
-    reportApi.getMyReport()
-      .then(data => {
-        setReport(data);
+    // fetch report and lock status concurrently
+    Promise.all([
+      reportApi.getMyReport(),
+      getSelectedCareer()
+    ])
+      .then(([reportData, careerData]) => {
+        setReport(reportData);
+        if(careerData && careerData.career_title){
+          setLockedCareer(careerData.career_title);
+        }
         setLoading(false);
       })
       .catch(err => {
-        setError(err.message || 'Failed to load report.');
-        setLoading(false);
+        setError(err.message || "Failed to load report data")
+        setLoading(false)
       });
   }, []);
 
   const handleSelectCareer = async (careerName) => {
+    if(lockedCareer) return; // prevent execution if already locked.
+
     setSelectingCareer(careerName);
     try {
       await selectCareer(careerName);
@@ -57,8 +67,8 @@ export default function DiscoveryReport() {
       }, 1500);
 
     } catch (err) {
-      console.error("Failed to select career:", err);
-      toast.error("Failed to save your career choice. Please try again.");
+      const errorMsg = err.response?.data?.detail || "Failed to save your career choice."
+      toast.error(errorMsg);
       setSelectingCareer(null);
     }
   };
@@ -226,7 +236,10 @@ export default function DiscoveryReport() {
           <p className="text-slate-500 font-medium mt-2">Calculated based on your 5D profile and personal constraints.</p>
         </div>
 
-        {matches.map((career, idx) => (
+        {matches.map((career, idx) => {
+          const isAnyLocked = lockedCareer !== null;
+          const isThisSpecificCareerLocked = lockedCareer === career.career_name;
+          return (
           <motion.div 
             initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.1 }}
             key={idx} 
@@ -289,26 +302,30 @@ export default function DiscoveryReport() {
                 <p className="text-xs text-slate-500 font-medium mt-1">Select this to generate your step-by-step roadmap.</p>
               </div>
               <button
-                onClick={() => handleSelectCareer(career.career_name)}
-                disabled={selectingCareer !== null}
-                className={`flex items-center justify-center gap-2 px-8 py-4 font-black rounded-2xl transition-all shadow-lg ${
-                  selectingCareer === career.career_name 
-                    ? 'bg-emerald-600 text-white opacity-100' 
-                    : selectingCareer !== null 
-                      ? 'bg-slate-200 text-slate-400 opacity-50 cursor-not-allowed shadow-none'
-                      : 'bg-emerald-500 hover:bg-emerald-600 hover:-translate-y-1 text-white shadow-emerald-500/30'
-                }`}
-              >
-                {selectingCareer === career.career_name ? (
-                  <><Loader2 size={18} className="animate-spin" /> Saving...</>
-                ) : (
-                  <><CheckCircle2 size={18} /> Lock in this Career</>
-                )}
-              </button>
+                  onClick={() => handleSelectCareer(career.career_name)}
+                  disabled={selectingCareer !== null || isAnyLocked}
+                  className={`flex items-center justify-center gap-2 px-8 py-4 font-black rounded-2xl transition-all shadow-lg ${
+                    isThisSpecificCareerLocked 
+                      ? 'bg-emerald-600 text-white opacity-100 shadow-emerald-500/30' 
+                      : isAnyLocked || selectingCareer !== null 
+                        ? 'bg-slate-200 text-slate-400 opacity-50 cursor-not-allowed shadow-none'
+                        : 'bg-emerald-500 hover:bg-emerald-600 hover:-translate-y-1 text-white shadow-emerald-500/30'
+                  }`}
+                >
+                  {isThisSpecificCareerLocked ? (
+                    <><CheckCircle2 size={18} /> Career Locked</>
+                  ) : selectingCareer === career.career_name ? (
+                    <><Loader2 size={18} className="animate-spin" /> Saving...</>
+                  ) : isAnyLocked ? (
+                    <><Target size={18} /> Selection Closed</>
+                  ) : (
+                    <><CheckCircle2 size={18} /> Lock in this Career</>
+                  )}
+                </button>
             </div>
 
           </motion.div>
-        ))}
+        )})}
       </div>
     );
   };
