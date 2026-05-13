@@ -2,9 +2,12 @@ import React from 'react';
 import { MessageCircle, ExternalLink, GraduationCap } from 'lucide-react';
 
 const StudentCard = ({ student, onChatClick, onViewProfile }) => {
-  const studentName = student.student_name || "Unknown Student";
-  const academicData = student.student_snapshot?.academic_data || {};
-  const studentClass = academicData.class; // Will be undefined if not set
+  // Fallback checks for the name depending on how the backend sends it
+  const studentName = student.full_name || student.student_name || "Unknown Student";
+  
+  // Safely check for class data (handles both nested and flat structures)
+  const academicData = student.student_snapshot?.academic_data || student.academic_data || {};
+  const studentClass = academicData.class;
 
   return (
     <div className="relative group bg-white border border-slate-100 p-5 rounded-3xl shadow-sm hover:shadow-xl hover:border-emerald-100 transition-all duration-300">
